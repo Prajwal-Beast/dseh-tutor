@@ -2,13 +2,25 @@ import { randomUUID } from 'crypto';
 import { callLLMOnce } from '../../lib/aiClient.js';
 import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts.js';
 
+function fixEscapes(s: string): string {
+  return s.replace(/\\(?!["\\\/bfnrtu]|u[0-9a-fA-F]{4})/g, '\\\\');
+}
+
 function extractJSON(text: string) {
   const t = text.trim();
   try { return JSON.parse(t); } catch {}
   const fenced = t.match(/```(?:json)?\s*([\s\S]*?)```/s);
-  if (fenced) { try { return JSON.parse(fenced[1].trim()); } catch {} }
+  if (fenced) {
+    const inner = fenced[1].trim();
+    try { return JSON.parse(inner); } catch {}
+    try { return JSON.parse(fixEscapes(inner)); } catch {}
+  }
   const obj = t.match(/\{[\s\S]*\}/);
-  if (obj) return JSON.parse(obj[0]);
+  if (obj) {
+    try { return JSON.parse(obj[0]); } catch {}
+    return JSON.parse(fixEscapes(obj[0]));
+  }
+  try { return JSON.parse(fixEscapes(t)); } catch {}
   throw new Error('Could not extract JSON from model response');
 }
 

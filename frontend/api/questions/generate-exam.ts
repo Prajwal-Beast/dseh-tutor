@@ -4,13 +4,26 @@ import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib
 
 const SUBJECTS = ['Economics', 'Statistics', 'Mathematics', 'Computer Science'] as const;
 
+function fixEscapes(s: string): string {
+  // Replace \X where X is not a valid JSON escape char (\", \\, \/, \b, \f, \n, \r, \t, \uXXXX)
+  return s.replace(/\\(?!["\\\/bfnrtu]|u[0-9a-fA-F]{4})/g, '\\\\');
+}
+
 function extractJSON(text: string) {
   const t = text.trim();
   try { return JSON.parse(t); } catch {}
   const fenced = t.match(/```(?:json)?\s*([\s\S]*?)```/s);
-  if (fenced) { try { return JSON.parse(fenced[1].trim()); } catch {} }
+  if (fenced) {
+    const inner = fenced[1].trim();
+    try { return JSON.parse(inner); } catch {}
+    try { return JSON.parse(fixEscapes(inner)); } catch {}
+  }
   const obj = t.match(/\{[\s\S]*\}/);
-  if (obj) return JSON.parse(obj[0]);
+  if (obj) {
+    try { return JSON.parse(obj[0]); } catch {}
+    return JSON.parse(fixEscapes(obj[0]));
+  }
+  try { return JSON.parse(fixEscapes(t)); } catch {}
   throw new Error('Could not extract JSON from model response');
 }
 
