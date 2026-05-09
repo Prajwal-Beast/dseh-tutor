@@ -7,3 +7,5 @@ frontend/dist
 *.png
 *.jpg
 .claude/settings.local.json
+
+.vercel
