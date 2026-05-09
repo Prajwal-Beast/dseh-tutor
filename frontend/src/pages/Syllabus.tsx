@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { syllabusRepository } from '../repositories/syllabusRepository';
 import SubjectBadge from '../components/SubjectBadge';
 import type { Subject, SyllabusTopic } from '../types';
@@ -31,7 +30,7 @@ export default function Syllabus() {
     if (!form.title.trim() || !form.content.trim()) return;
 
     const topic: SyllabusTopic = {
-      id: editId ?? uuidv4(),
+      id: editId ?? crypto.randomUUID(),
       subject: form.subject,
       title: form.title.trim(),
       subtopic: form.subtopic?.trim() || undefined,

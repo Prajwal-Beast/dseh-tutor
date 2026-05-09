@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { callLLMOnce } from '../../lib/aiClient';
 import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts';
 
@@ -18,7 +18,7 @@ export default async function handler(req: any, res: any) {
     const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
     const parsed = extractJSON(raw);
     const questions = parsed.questions.map((q: any) => ({
-      id: uuidv4(),
+      id: randomUUID(),
       subject,
       subtopic,
       text: q.text,

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { v4 as uuidv4 } from 'uuid';
 import { generateQuestions, generateExamQuestions } from '../api/backendApi';
 import { syllabusRepository } from '../repositories/syllabusRepository';
 import { questionRepository } from '../repositories/questionRepository';
@@ -124,9 +123,9 @@ export default function Practice() {
   }
 
   function finishQuiz(attempts: LiveAttempt[]) {
-    const sessionId = uuidv4();
+    const sessionId = crypto.randomUUID();
     const saved: QuestionAttempt[] = attempts.map((a) => ({
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       questionId: questions[a.questionIndex].id,
       subject: questions[a.questionIndex].subject,
       subtopic: questions[a.questionIndex].subtopic,
