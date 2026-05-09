@@ -1,0 +1,12 @@
+{
+  "name": "dseh-tutor",
+  "version": "1.0.0",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0"
+  }
+}

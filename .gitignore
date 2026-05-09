@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.env.local
+frontend/dist
+.vercel/
+*.png
+*.jpg
+.claude/settings.local.json
