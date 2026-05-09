@@ -30,7 +30,7 @@ export default async function handler(req: any, res: any) {
         .slice(0, 3000);
 
       const prompt = buildQuestionPrompt(subject, 10, 'Medium', undefined, content || undefined);
-      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
+      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 8192);
 
       const parsed = extractJSON(raw);
       results.push(
