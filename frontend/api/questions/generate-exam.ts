@@ -15,32 +15,31 @@ export default async function handler(req: any, res: any) {
   const { syllabusTopics = [] } = req.body;
 
   try {
-    const results = await Promise.all(
-      SUBJECTS.map(async (subject) => {
-        const content = syllabusTopics
-          .filter((t: any) => t.subject === subject)
-          .map((t: any) => t.content)
-          .join('\n\n')
-          .slice(0, 3000);
+    const results: any[][] = [];
 
-        const prompt = buildQuestionPrompt(subject, 10, 'Medium', undefined, content || undefined);
-        const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
+    for (const subject of SUBJECTS) {
+      const content = syllabusTopics
+        .filter((t: any) => t.subject === subject)
+        .map((t: any) => t.content)
+        .join('\n\n')
+        .slice(0, 3000);
 
-        try {
-          return extractJSON(raw).questions.map((q: any) => ({
-            id: randomUUID(),
-            subject,
-            text: q.text,
-            options: q.options,
-            correctIndex: q.correctIndex,
-            explanation: q.explanation,
-            difficulty: 'Medium',
-          }));
-        } catch {
-          return [];
-        }
-      })
-    );
+      const prompt = buildQuestionPrompt(subject, 10, 'Medium', undefined, content || undefined);
+      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
+
+      const parsed = extractJSON(raw);
+      results.push(
+        parsed.questions.map((q: any) => ({
+          id: randomUUID(),
+          subject,
+          text: q.text,
+          options: q.options,
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+          difficulty: 'Medium',
+        }))
+      );
+    }
 
     res.json({ questions: results.flat() });
   } catch (err: any) {
