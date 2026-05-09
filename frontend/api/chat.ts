@@ -1,5 +1,5 @@
-import { callLLM } from '../lib/aiClient';
-import { buildTutorSystemPrompt } from '../lib/prompts';
+import { callLLM } from '../lib/aiClient.js';
+import { buildTutorSystemPrompt } from '../lib/prompts.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();

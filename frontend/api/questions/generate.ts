@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { callLLMOnce } from '../../lib/aiClient';
-import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts';
+import { callLLMOnce } from '../../lib/aiClient.js';
+import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts.js';
 
 function extractJSON(text: string) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
