@@ -8,7 +8,7 @@ export interface LLMMessage {
 }
 
 function getClient() {
-  const key = process.env.GEMINI_API_KEY;
+  const key = (process.env.GEMINI_API_KEY ?? "").replace(new RegExp("^" + String.fromCharCode(65279)), "").trim();
   if (!key) throw new Error('GEMINI_API_KEY is not set');
   return new GoogleGenerativeAI(key);
 }
