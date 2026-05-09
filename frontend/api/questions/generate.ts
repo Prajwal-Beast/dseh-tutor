@@ -3,8 +3,13 @@ import { callLLMOnce } from '../../lib/aiClient.js';
 import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts.js';
 
 function extractJSON(text: string) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  return JSON.parse(fenced ? fenced[1].trim() : text.trim());
+  const t = text.trim();
+  try { return JSON.parse(t); } catch {}
+  const fenced = t.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  if (fenced) { try { return JSON.parse(fenced[1].trim()); } catch {} }
+  const obj = t.match(/\{[\s\S]*\}/);
+  if (obj) return JSON.parse(obj[0]);
+  throw new Error('Could not extract JSON from model response');
 }
 
 export default async function handler(req: any, res: any) {
