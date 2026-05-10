@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 export interface LLMMessage {
   role: 'user' | 'assistant';
@@ -8,9 +8,9 @@ export interface LLMMessage {
 }
 
 function getClient() {
-  const key = (process.env.GEMINI_API_KEY ?? "").replace(new RegExp("^" + String.fromCharCode(65279)), "").trim();
-  if (!key) throw new Error('GEMINI_API_KEY is not set');
-  return new GoogleGenerativeAI(key);
+  const key = (process.env.GROQ_API_KEY ?? '').trim();
+  if (!key) throw new Error('GROQ_API_KEY is not set');
+  return new Groq({ apiKey: key });
 }
 
 export async function callLLM(
@@ -18,20 +18,16 @@ export async function callLLM(
   messages: LLMMessage[],
   maxTokens = 2048
 ): Promise<string> {
-  const model = getClient().getGenerativeModel({
+  const client = getClient();
+  const completion = await client.chat.completions.create({
     model: MODEL,
-    systemInstruction: systemPrompt,
-    generationConfig: { maxOutputTokens: maxTokens },
+    max_tokens: maxTokens,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
   });
-
-  const history = messages.slice(0, -1).map((m) => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-
-  const last = messages[messages.length - 1];
-  const result = await model.startChat({ history }).sendMessage(last.content);
-  return result.response.text();
+  return completion.choices[0]?.message?.content ?? '';
 }
 
 export async function callLLMOnce(
