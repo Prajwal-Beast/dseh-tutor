@@ -56,6 +56,9 @@ export default async function handler(req: any, res: any) {
       const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 8192);
 
       const parsed = extractJSON(raw);
+      if (!Array.isArray(parsed?.questions)) {
+        throw new Error(`[${subject}] No questions array. Parsed keys: ${Object.keys(parsed || {}).join(', ')}. Raw: ${raw.slice(0, 200)}`);
+      }
       results.push(
         parsed.questions.map((q: any) => ({
           id: randomUUID(),
