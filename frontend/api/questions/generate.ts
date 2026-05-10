@@ -44,7 +44,10 @@ export default async function handler(req: any, res: any) {
     const prompt = buildQuestionPrompt(subject, numQuestions, difficulty, subtopic, syllabusContent);
     const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
     const parsed = extractJSON(raw);
-    const questions = parsed.questions.map((q: any) => ({
+    // Model may return {questions:[...]} or just [...]
+    const qs: any[] = Array.isArray(parsed) ? parsed : parsed.questions;
+    if (!Array.isArray(qs) || qs.length === 0) throw new Error('No questions returned');
+    const questions = qs.map((q: any) => ({
       id: randomUUID(),
       subject,
       subtopic,
