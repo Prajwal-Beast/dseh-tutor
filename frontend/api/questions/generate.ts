@@ -5,7 +5,6 @@ import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib
 const DBLSLASH_MARK = '\x01\x02\x03';
 
 function fixEscapes(s: string): string {
-  // Protect valid \\ pairs, double remaining lone \, restore \\
   return s
     .replace(/\\\\/g, DBLSLASH_MARK)
     .replace(/\\/g, '\\\\')
@@ -32,7 +31,7 @@ function extractJSON(text: string) {
     const r2 = tryParse(obj[0]);
     if (r2) return r2;
   }
-  throw new Error('Could not extract JSON from model response');
+  throw new Error('Could not extract JSON. Raw: ' + text.slice(0, 300));
 }
 
 export default async function handler(req: any, res: any) {
