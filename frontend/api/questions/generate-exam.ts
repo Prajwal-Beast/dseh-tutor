@@ -27,7 +27,7 @@ async function generateOneQuestion(subject: string, syllabusHint: string): Promi
   const client = getGroqClient();
   const completion = await client.chat.completions.create({
     model: EXAM_MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: SINGLE_Q_SYSTEM },
