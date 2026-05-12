@@ -16,12 +16,14 @@ function getClient() {
 export async function callLLM(
   systemPrompt: string,
   messages: LLMMessage[],
-  maxTokens = 2048
+  maxTokens = 2048,
+  jsonMode = false
 ): Promise<string> {
   const client = getClient();
   const completion = await client.chat.completions.create({
     model: MODEL,
     max_tokens: maxTokens,
+    response_format: jsonMode ? { type: 'json_object' } : { type: 'text' },
     messages: [
       { role: 'system', content: systemPrompt },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -33,7 +35,8 @@ export async function callLLM(
 export async function callLLMOnce(
   systemPrompt: string,
   userMessage: string,
-  maxTokens = 2048
+  maxTokens = 2048,
+  jsonMode = false
 ): Promise<string> {
-  return callLLM(systemPrompt, [{ role: 'user', content: userMessage }], maxTokens);
+  return callLLM(systemPrompt, [{ role: 'user', content: userMessage }], maxTokens, jsonMode);
 }

@@ -42,7 +42,7 @@ export default async function handler(req: any, res: any) {
 
   try {
     const prompt = buildQuestionPrompt(subject, numQuestions, difficulty, subtopic, syllabusContent);
-    const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
+    const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096, true);
     const parsed = extractJSON(raw);
     // Model may return {questions:[...]} or just [...]
     const qs: any[] = Array.isArray(parsed) ? parsed : parsed.questions;
