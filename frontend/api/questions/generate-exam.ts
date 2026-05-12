@@ -35,7 +35,7 @@ export default async function handler(req: any, res: any) {
           ? `Generate 1 Medium-difficulty question for: ${subject}.\nSyllabus hint:\n${syllabusHint}`
           : `Generate 1 Medium-difficulty question for: ${subject}. Use standard university-level knowledge.`;
 
-        const raw = await callLLMOnce(SINGLE_Q_PROMPT, userMsg, 1024, true);
+        const raw = await callLLMOnce(SINGLE_Q_PROMPT, userMsg, 2048, true);
 
         let q: any;
         try { q = JSON.parse(raw); } catch {
