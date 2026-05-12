@@ -1,19 +1,49 @@
 import { randomUUID } from 'crypto';
-import { callLLMOnce } from '../../lib/aiClient.js';
-import { QUESTION_GENERATOR_SYSTEM_PROMPT } from '../../lib/prompts.js';
+import Groq from 'groq-sdk';
 
 const SUBJECTS = ['Economics', 'Statistics', 'Mathematics', 'Computer Science'] as const;
 const QUESTIONS_PER_SUBJECT = 5;
 
-const SINGLE_Q_PROMPT = `You are an expert exam question author for the University of Milan DSEH background knowledge test.
+// gemma2-9b-it produces more consistent JSON than llama-3.3-70b for structured output
+const EXAM_MODEL = 'gemma2-9b-it';
 
-Return ONLY a valid JSON object with this exact structure:
-{"text":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}
+const SINGLE_Q_SYSTEM = `You are an exam question author. Output ONLY a JSON object. No markdown. No explanation outside JSON.
+Required format:
+{"text":"question here","options":["A","B","C","D"],"correctIndex":0,"explanation":"why A is correct"}
+- options must be a JSON array with exactly 4 string items
+- correctIndex is an integer 0-3`;
 
-Rules:
-- Exactly 4 options
-- correctIndex is 0-3 (index of the correct option)
-- No markdown, no extra text, just the JSON object`;
+function getGroqClient() {
+  const key = (process.env.GROQ_API_KEY ?? '').trim();
+  if (!key) throw new Error('GROQ_API_KEY is not set');
+  return new Groq({ apiKey: key });
+}
+
+async function generateOneQuestion(subject: string, syllabusHint: string): Promise<any | null> {
+  const userMsg = syllabusHint
+    ? `Generate 1 Medium-difficulty question for ${subject}.\nSyllabus context:\n${syllabusHint}`
+    : `Generate 1 Medium-difficulty ${subject} question using standard university-level knowledge.`;
+
+  const client = getGroqClient();
+  const completion = await client.chat.completions.create({
+    model: EXAM_MODEL,
+    max_tokens: 1024,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: SINGLE_Q_SYSTEM },
+      { role: 'user', content: userMsg },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? '';
+  try {
+    const q = JSON.parse(raw);
+    if (!q.text || !Array.isArray(q.options) || q.options.length !== 4) return null;
+    return q;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -24,26 +54,15 @@ export default async function handler(req: any, res: any) {
     const allQuestions: any[] = [];
 
     for (const subject of SUBJECTS) {
-      const syllabusHint = syllabusTopics
-        .filter((t: any) => t.subject === subject)
-        .map((t: any) => t.content)
+      const syllabusHint = (syllabusTopics as any[])
+        .filter((t) => t.subject === subject)
+        .map((t) => t.content)
         .join('\n\n')
-        .slice(0, 1000);
+        .slice(0, 800);
 
       for (let i = 0; i < QUESTIONS_PER_SUBJECT; i++) {
-        const userMsg = syllabusHint
-          ? `Generate 1 Medium-difficulty question for: ${subject}.\nSyllabus hint:\n${syllabusHint}`
-          : `Generate 1 Medium-difficulty question for: ${subject}. Use standard university-level knowledge.`;
-
-        const raw = await callLLMOnce(SINGLE_Q_PROMPT, userMsg, 2048, true);
-
-        let q: any;
-        try { q = JSON.parse(raw); } catch {
-          continue; // skip this question if model output is still bad
-        }
-
-        if (!q.text || !Array.isArray(q.options) || q.options.length !== 4) continue;
-
+        const q = await generateOneQuestion(subject, syllabusHint);
+        if (!q) continue;
         allQuestions.push({
           id: randomUUID(),
           subject,
