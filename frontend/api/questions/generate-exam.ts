@@ -1,48 +1,55 @@
 import { randomUUID } from 'crypto';
-import Groq from 'groq-sdk';
+import { callLLMOnce } from '../../lib/aiClient.js';
+import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts.js';
 
 const SUBJECTS = ['Economics', 'Statistics', 'Mathematics', 'Computer Science'] as const;
 const QUESTIONS_PER_SUBJECT = 5;
 
-// qwen3-32b produces clean JSON with proper "options":[] formatting
-const EXAM_MODEL = 'qwen/qwen3-32b';
+const DBLSLASH_MARK = '\x01\x02\x03';
 
-const SINGLE_Q_SYSTEM = `You are an exam question author. Output ONLY a JSON object. No markdown. No explanation outside JSON.
-Required format:
-{"text":"question here","options":["A","B","C","D"],"correctIndex":0,"explanation":"why A is correct"}
-- options must be a JSON array with exactly 4 string items
-- correctIndex is an integer 0-3`;
-
-function getGroqClient() {
-  const key = (process.env.GROQ_API_KEY ?? '').trim();
-  if (!key) throw new Error('GROQ_API_KEY is not set');
-  return new Groq({ apiKey: key });
+/** Fix lone backslashes from LaTeX (e.g. \frac → \\frac) */
+function fixEscapes(s: string): string {
+  return s
+    .replace(/\\\\/g, DBLSLASH_MARK)
+    .replace(/\\/g, '\\\\')
+    .replace(new RegExp(DBLSLASH_MARK, 'g'), '\\\\');
 }
 
-async function generateOneQuestion(subject: string, syllabusHint: string): Promise<any | null> {
-  const userMsg = syllabusHint
-    ? `Generate 1 Medium-difficulty question for ${subject}.\nSyllabus context:\n${syllabusHint}`
-    : `Generate 1 Medium-difficulty ${subject} question using standard university-level knowledge.`;
+/**
+ * Fix common model formatting errors before JSON.parse:
+ *  - "key=[ or key=( → "key": [   (Python/JS-style assignment in JSON)
+ *  - Remove markdown fences
+ */
+function preprocess(raw: string): string {
+  return raw
+    .replace(/^```(?:json)?\s*/gm, '')
+    .replace(/```\s*$/gm, '')
+    .replace(/"?(\w+)"?\s*[=(]\s*\[/g, '"$1": [')
+    .trim();
+}
 
-  const client = getGroqClient();
-  const completion = await client.chat.completions.create({
-    model: EXAM_MODEL,
-    max_tokens: 2048,
-    response_format: { type: 'json_object' },
-    messages: [
-      { role: 'system', content: SINGLE_Q_SYSTEM },
-      { role: 'user', content: userMsg },
-    ],
-  });
+function tryParse(s: string): any | null {
+  const p = preprocess(s);
+  try { return JSON.parse(p); } catch {}
+  try { return JSON.parse(fixEscapes(p)); } catch {}
+  return null;
+}
 
-  const raw = completion.choices[0]?.message?.content ?? '';
-  try {
-    const q = JSON.parse(raw);
-    if (!q.text || !Array.isArray(q.options) || q.options.length !== 4) return null;
-    return q;
-  } catch {
-    return null;
+function extractJSON(text: string): any {
+  const t = text.trim();
+  const fenced = t.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  if (fenced) {
+    const r = tryParse(fenced[1].trim());
+    if (r) return r;
   }
+  const r1 = tryParse(t);
+  if (r1) return r1;
+  const obj = t.match(/\{[\s\S]*\}/s);
+  if (obj) {
+    const r2 = tryParse(obj[0]);
+    if (r2) return r2;
+  }
+  throw new Error('Could not extract JSON from model response');
 }
 
 export default async function handler(req: any, res: any) {
@@ -54,15 +61,21 @@ export default async function handler(req: any, res: any) {
     const allQuestions: any[] = [];
 
     for (const subject of SUBJECTS) {
-      const syllabusHint = (syllabusTopics as any[])
+      const content = (syllabusTopics as any[])
         .filter((t) => t.subject === subject)
         .map((t) => t.content)
         .join('\n\n')
-        .slice(0, 800);
+        .slice(0, 2000);
 
-      for (let i = 0; i < QUESTIONS_PER_SUBJECT; i++) {
-        const q = await generateOneQuestion(subject, syllabusHint);
-        if (!q) continue;
+      const prompt = buildQuestionPrompt(subject, QUESTIONS_PER_SUBJECT, 'Medium', undefined, content || undefined);
+      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096);
+
+      const parsed = extractJSON(raw);
+      const qs: any[] = Array.isArray(parsed) ? parsed : parsed?.questions ?? [];
+      if (qs.length === 0) continue; // skip subject rather than fail whole exam
+
+      for (const q of qs) {
+        if (!q.text || !Array.isArray(q.options)) continue;
         allQuestions.push({
           id: randomUUID(),
           subject,
