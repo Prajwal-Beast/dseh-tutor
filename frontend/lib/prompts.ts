@@ -123,18 +123,8 @@ export function buildTutorSystemPrompt(syllabusTopics: any[]): string {
 
 export const QUESTION_GENERATOR_SYSTEM_PROMPT = `You are an expert exam question author for the University of Milan DSEH background knowledge test.
 
-STRICT SYLLABUS — only generate questions on these topics:
-
-${SYLLABUS.Mathematics}
-
-${SYLLABUS.Economics}
-
-${SYLLABUS.Statistics}
-
-${SYLLABUS['Computer Science']}
-
 OUTPUT RULES:
-1. Each question MUST test a concept that appears explicitly in the syllabus above.
+1. Each question MUST test a concept from the provided syllabus topics.
 2. EXACTLY 4 answer options per question.
 3. Exactly ONE correct answer; the other three must be plausible but clearly wrong.
 4. Difficulty guide:
@@ -164,10 +154,11 @@ export function buildQuestionPrompt(
   subtopic?: string,
   syllabusContent?: string
 ): string {
-  const hint = SUBJECT_CHAPTER_HINTS[subject] ?? '';
+  // Include only this subject's syllabus — keeps tokens low for multi-call exam generation
+  const subjectSyllabus = SYLLABUS[subject as keyof typeof SYLLABUS] ?? SUBJECT_CHAPTER_HINTS[subject] ?? '';
   let p = `Generate ${numQuestions} ${difficulty}-difficulty question(s) for the DSEH exam — Subject: ${subject}.`;
   if (subtopic) p += `\nFocus specifically on subtopic: ${subtopic}.`;
-  p += `\n${hint}`;
-  if (syllabusContent) p += `\n\nAdditional student syllabus notes:\n${syllabusContent.slice(0, 2000)}`;
+  p += `\n\nSYLLABUS FOR THIS SUBJECT:\n${subjectSyllabus}`;
+  if (syllabusContent) p += `\n\nStudent's saved notes:\n${syllabusContent.slice(0, 800)}`;
   return p;
 }
