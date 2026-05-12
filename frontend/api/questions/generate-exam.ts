@@ -3,39 +3,7 @@ import { callLLMOnce } from '../../lib/aiClient.js';
 import { QUESTION_GENERATOR_SYSTEM_PROMPT, buildQuestionPrompt } from '../../lib/prompts.js';
 
 const SUBJECTS = ['Economics', 'Statistics', 'Mathematics', 'Computer Science'] as const;
-
-const DBLSLASH_MARK = '\x01\x02\x03';
-
-function fixEscapes(s: string): string {
-  // Protect valid \\ pairs, double remaining lone \, restore \\
-  return s
-    .replace(/\\\\/g, DBLSLASH_MARK)
-    .replace(/\\/g, '\\\\')
-    .replace(new RegExp(DBLSLASH_MARK, 'g'), '\\\\');
-}
-
-function tryParse(s: string): any | null {
-  try { return JSON.parse(s); } catch {}
-  try { return JSON.parse(fixEscapes(s)); } catch {}
-  return null;
-}
-
-function extractJSON(text: string) {
-  const t = text.trim();
-  const fenced = t.match(/```(?:json)?\s*([\s\S]*?)```/s);
-  if (fenced) {
-    const r = tryParse(fenced[1].trim());
-    if (r) return r;
-  }
-  const r1 = tryParse(t);
-  if (r1) return r1;
-  const obj = t.match(/\{[\s\S]*\}/s);
-  if (obj) {
-    const r2 = tryParse(obj[0]);
-    if (r2) return r2;
-  }
-  throw new Error('Could not extract JSON from model response');
-}
+const QUESTIONS_PER_SUBJECT = 5; // 5 per subject = 20 total, reliable with JSON mode
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -52,15 +20,20 @@ export default async function handler(req: any, res: any) {
         .join('\n\n')
         .slice(0, 3000);
 
-      const prompt = buildQuestionPrompt(subject, 10, 'Medium', undefined, content || undefined);
-      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 8192, true);
+      const prompt = buildQuestionPrompt(subject, QUESTIONS_PER_SUBJECT, 'Medium', undefined, content || undefined);
+      const raw = await callLLMOnce(QUESTION_GENERATOR_SYSTEM_PROMPT, prompt, 4096, true);
 
-      const parsed = extractJSON(raw);
+      let parsed: any;
+      try { parsed = JSON.parse(raw); } catch {
+        throw new Error(`Invalid JSON for ${subject}: ${raw.slice(0, 100)}`);
+      }
+
       // Model may return {questions:[...]} or just [...]
       const qs: any[] = Array.isArray(parsed) ? parsed : parsed.questions;
       if (!Array.isArray(qs) || qs.length === 0) {
         throw new Error(`No questions returned for ${subject}`);
       }
+
       results.push(
         qs.map((q: any) => ({
           id: randomUUID(),
