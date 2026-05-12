@@ -4,8 +4,8 @@ import Groq from 'groq-sdk';
 const SUBJECTS = ['Economics', 'Statistics', 'Mathematics', 'Computer Science'] as const;
 const QUESTIONS_PER_SUBJECT = 5;
 
-// gemma2-9b-it produces more consistent JSON than llama-3.3-70b for structured output
-const EXAM_MODEL = 'gemma2-9b-it';
+// qwen3-32b produces clean JSON with proper "options":[] formatting
+const EXAM_MODEL = 'qwen/qwen3-32b';
 
 const SINGLE_Q_SYSTEM = `You are an exam question author. Output ONLY a JSON object. No markdown. No explanation outside JSON.
 Required format:
