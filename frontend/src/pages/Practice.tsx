@@ -171,9 +171,11 @@ export default function Practice() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="animate-spin text-4xl">⚙️</div>
         <p className="text-gray-600 font-medium">
-          {mode === 'exam' ? 'Generating 40 exam questions (4 API calls)…' : 'Generating questions…'}
+          {mode === 'exam' ? 'Generating 40 exam questions across all 4 subjects…' : 'Generating questions…'}
         </p>
-        <p className="text-sm text-gray-400">This may take 15–30 seconds.</p>
+        <p className="text-sm text-gray-400">
+          {mode === 'exam' ? 'Based on official DSEH syllabus. May take 30–60 seconds.' : 'This may take 10–20 seconds.'}
+        </p>
       </div>
     );
   }
